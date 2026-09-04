@@ -1,0 +1,63 @@
+name: Guardião da main
+
+# Mesma trava dos outros repositórios da organização: qualquer commit que chegue
+# à main sem ter passado por um Pull Request mergeado falha aqui, deixando o
+# histórico e a interface marcados em vermelho.
+#
+# Aqui isso pesa um pouco mais do que nos repos de aplicação: o stoat-web-dev
+# fixa um commit desta main pelo ponteiro do submódulo. Um push direto entra no
+# cliente sem nunca ter sido revisado nem compilado por ninguém.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verificar-origem:
+    name: Verificar se o commit veio de um PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar PR associado ao commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Mensagem e autor chegam por variável de ambiente, nunca interpolados
+          # direto no script: o texto é livre e quebraria o shell em aspas — ou
+          # executaria comandos arbitrários no runner.
+          MENSAGEM: ${{ github.event.head_commit.message }}
+          AUTOR: ${{ github.event.head_commit.author.name }}
+        run: |
+          set -euo pipefail
+
+          if printf '%s' "${MENSAGEM}" | grep -q '\[bootstrap\]'; then
+            echo "OK: commit de bootstrap da esteira, liberado."
+            exit 0
+          fi
+
+          # Merges do upstream (stoatchat/javascript-client-sdk) entram por
+          # sincronização, não por PR nosso, e não devem marcar vermelho.
+          if printf '%s' "${MENSAGEM}" | grep -q '\[upstream\]'; then
+            echo "OK: sincronização com o upstream, liberado."
+            exit 0
+          fi
+
+          pr=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | .[0].number // empty')
+
+          if [ -n "${pr}" ]; then
+            echo "OK: commit ${GITHUB_SHA::8} entrou na main pelo PR #${pr}."
+            exit 0
+          fi
+
+          echo "::error title=Push direto na main::O commit ${GITHUB_SHA::8} (autor: ${AUTOR}) chegou à main sem PR mergeado."
+          echo ""
+          echo "A main só deve receber código via Pull Request."
+          echo "Fluxo correto:"
+          echo "  1. git switch main && git pull"
+          echo "  2. git switch -c feature/minha-mudanca"
+          echo "  3. push -> o workflow Auto PR abre o PR para main"
+          echo "  4. merge -> avance o ponteiro do submódulo no stoat-web-dev"
+          exit 1

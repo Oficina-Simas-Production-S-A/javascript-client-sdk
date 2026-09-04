@@ -1,0 +1,125 @@
+name: CI
+
+# Verificação estática do SDK em Pull Requests e na main.
+# Não roda testes: o pacote não tem suíte própria.
+#
+# Ao contrário do stoat-api-dev e do stoat-web-dev, aqui TODOS os portões
+# bloqueiam. A diferença tem razão: naqueles dois a formatação e o lint carregam
+# dívida herdada do upstream, que travaria PRs sem relação com a mudança. Este
+# pacote chegou limpo nos quatro comandos — medido num runner Linux antes de
+# fechar os portões — então qualquer apontamento novo é, por definição, de quem
+# está mexendo agora.
+#
+# Se um dia isso ficar vermelho por dívida herdada de um merge do upstream, e
+# não por regressão, o caminho é consertar ou reabrir o portão de propósito —
+# não desativar o passo em silêncio.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualidade:
+    name: Tipos, formatação, lint e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+
+      # --frozen-lockfile para a CI medir exatamente as versões do lockfile.
+      # Se ele estiver desatualizado, o passo falha aqui, e não com um erro
+      # confuso três passos adiante.
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Verificação de tipos
+        run: |
+          set -uo pipefail
+          if pnpm typecheck > tsc.log 2>&1; then
+            echo "Tipos sem erros." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # O tsc imprime códigos ANSI entre "error" e o código TS, então
+          # filtrar a saída crua sub-reporta em silêncio. Limpa antes de contar.
+          sed 's/\x1b\[[0-9;]*m//g' tsc.log > tsc.txt
+          total=$(grep -cE 'error TS' tsc.txt || true)
+          {
+            echo "### Tipos — ${total} erro(s)"
+            echo
+            echo '```'
+            tail -20 tsc.txt
+            echo '```'
+            echo
+            echo "Reproduzir local: pnpm typecheck"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Tipos::${total} erro(s) de tipo; veja o resumo da execução"
+          exit 1
+
+      # A formatação depende do @trivago/prettier-plugin-sort-imports, que
+      # reordena os imports. Rodar o prettier sem as dependências instaladas
+      # passa sem reclamar e deixa o arquivo fora do padrão — foi exatamente
+      # assim que Server.ts entrou torto na main. Por isso este passo vem depois
+      # do install, e nunca de um prettier avulso.
+      - name: Formatação
+        run: |
+          set -uo pipefail
+          if pnpm fmt:check > fmt.log 2>&1; then
+            echo "Formatação sem apontamentos." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Formatação — arquivos fora do padrão"
+            echo
+            echo '```'
+            grep '^\[warn\]' fmt.log | head -20 || tail -10 fmt.log
+            echo '```'
+            echo
+            echo "Para corrigir: pnpm fmt"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Formatação::arquivos fora do padrão; veja o resumo da execução"
+          exit 1
+
+      - name: Lint
+        run: |
+          set -uo pipefail
+          if pnpm lint > lint.log 2>&1; then
+            echo "Lint sem apontamentos." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          resumo=$(grep -E '^.[0-9]+ problems' lint.log | tail -1 || true)
+          {
+            echo "### Lint — apontamentos"
+            echo
+            echo "${resumo:-veja o log do passo}"
+            echo
+            echo '```'
+            tail -20 lint.log
+            echo '```'
+            echo
+            echo "Boa parte sai com: pnpm lint:fix"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Lint::${resumo:-apontamentos de lint}; veja o resumo da execução"
+          exit 1
+
+      # O build é o que o stoat-web-dev realmente consome: ele importa de lib/,
+      # não de src/. Um pacote que passa nos tipos mas não emite continua
+      # quebrando o cliente, então o build fecha a verificação.
+      - name: Build
+        run: pnpm build

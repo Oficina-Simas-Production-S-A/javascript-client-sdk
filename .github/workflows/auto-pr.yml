@@ -1,0 +1,116 @@
+name: Auto PR
+
+# Abre automaticamente um Pull Request quando uma branch de trabalho recebe o
+# primeiro push, como nos outros repositórios da organização.
+#
+# Aqui todas as branches apontam para main. Nos repos de aplicação existe o par
+# develop/main porque cada um publica num ambiente: develop em dev, main em
+# prod. Este pacote não publica em lugar nenhum — quem "entrega" é o
+# stoat-web-dev avançando o ponteiro do submódulo — então uma branch de
+# integração intermediária só adicionaria uma etapa sem ambiente do outro lado.
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - "feat/**"
+      - "fix/**"
+      - "bugfix/**"
+      - "chore/**"
+      - "hotfix/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-pr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  abrir-pr:
+    name: Abrir Pull Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Montar corpo do PR
+        run: |
+          {
+            echo "PR aberto automaticamente pelo workflow **Auto PR** no primeiro push desta branch."
+            echo
+            echo "### Checklist"
+            echo "- [ ] Descrição do que muda e por quê"
+            echo "- [ ] CI verde"
+            echo "- [ ] Cliente que consome este SDK compila com a mudança"
+            echo
+            echo "> Depois do merge, o \`stoat-web-dev\` precisa avançar o ponteiro do submódulo \`packages/stoat.js\` para a nova ponta da main."
+          } > "${RUNNER_TEMP}/pr-body.md"
+
+      - name: Criar PR se ainda não existir
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          BASE: main
+        run: |
+          set -euo pipefail
+
+          existente=$(gh pr list \
+            --head "${GITHUB_REF_NAME}" \
+            --base "${BASE}" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "${existente}" ]; then
+            echo "PR #${existente} já está aberto para ${GITHUB_REF_NAME} -> ${BASE}."
+            exit 0
+          fi
+
+          if [ -z "$(git log --oneline "origin/${BASE}..HEAD")" ]; then
+            echo "Nenhum commit à frente de ${BASE}. O PR será aberto no próximo push com conteúdo."
+            exit 0
+          fi
+
+          titulo=$(git log -1 --pretty=%s)
+
+          if saida=$(gh pr create \
+                --base "${BASE}" \
+                --head "${GITHUB_REF_NAME}" \
+                --title "${titulo}" \
+                --body-file "${RUNNER_TEMP}/pr-body.md" 2>&1); then
+            echo "PR criado: ${GITHUB_REF_NAME} -> ${BASE}."
+            echo "${saida}"
+            exit 0
+          fi
+
+          echo "${saida}"
+
+          # A organização pode estar com "Allow GitHub Actions to create and
+          # approve pull requests" desligado. Nesse caso o PR não é um erro do
+          # código: orientamos a abertura manual em vez de quebrar o build.
+          if printf '%s' "${saida}" | grep -q "not permitted to create or approve pull requests"; then
+            link="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${BASE}...${GITHUB_REF_NAME}?expand=1"
+
+            echo "::warning title=Abertura automática de PR bloqueada::A organização não permite que o GitHub Actions crie Pull Requests. Abra manualmente: ${link}"
+
+            {
+              echo "### PR não pôde ser aberto automaticamente"
+              echo
+              echo "A organização está com **Allow GitHub Actions to create and approve pull requests** desligado."
+              echo
+              echo "[Abrir o Pull Request manualmente](${link})"
+              echo
+              echo "Para automatizar, escolha uma das opções:"
+              echo
+              echo "1. Um administrador liga a opção em \`Settings → Actions → General → Workflow permissions\`."
+              echo "2. Crie um PAT com escopo \`repo\` e salve como secret \`AUTOMATION_TOKEN\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            exit 0
+          fi
+
+          echo "::error title=Falha ao abrir o PR::${saida}"
+          exit 1
