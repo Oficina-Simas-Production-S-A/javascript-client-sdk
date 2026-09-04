@@ -10,6 +10,7 @@ import type { Emoji } from "./classes/Emoji.js";
 import type { Message } from "./classes/Message.js";
 import type { Server } from "./classes/Server.js";
 import type { ServerMember } from "./classes/ServerMember.js";
+import type { Sound } from "./classes/Sound.js";
 import type { User, UserLimits } from "./classes/User.js";
 import { AccountCollection } from "./collections/AccountCollection.js";
 import { BotCollection } from "./collections/BotCollection.js";
@@ -21,6 +22,7 @@ import { MessageCollection } from "./collections/MessageCollection.js";
 import { ServerCollection } from "./collections/ServerCollection.js";
 import { ServerMemberCollection } from "./collections/ServerMemberCollection.js";
 import { SessionCollection } from "./collections/SessionCollection.js";
+import { SoundCollection } from "./collections/SoundCollection.js";
 import { UserCollection } from "./collections/UserCollection.js";
 import {
   ConnectionState,
@@ -33,6 +35,7 @@ import type { HydratedEmoji } from "./hydration/emoji.js";
 import type { HydratedMessage } from "./hydration/message.js";
 import type { HydratedServer } from "./hydration/server.js";
 import type { HydratedServerMember } from "./hydration/serverMember.js";
+import type { HydratedSound } from "./hydration/sound.js";
 import type { HydratedUser } from "./hydration/user.js";
 import {
   RE_CHANNELS,
@@ -99,6 +102,9 @@ export type Events = {
 
   emojiCreate: [emoji: Emoji];
   emojiDelete: [emoji: HydratedEmoji];
+
+  soundCreate: [sound: Sound];
+  soundDelete: [sound: HydratedSound];
 
   userSlowmodes: [];
 };
@@ -182,6 +188,7 @@ export class Client extends AsyncEventEmitter<Events> {
   readonly servers;
   readonly serverMembers;
   readonly sessions;
+  readonly sounds;
   readonly users;
 
   readonly api: API;
@@ -275,6 +282,7 @@ export class Client extends AsyncEventEmitter<Events> {
     this.servers = new ServerCollection(this);
     this.serverMembers = new ServerMemberCollection(this);
     this.sessions = new SessionCollection(this);
+    this.sounds = new SoundCollection(this);
     this.users = new UserCollection(this);
 
     this.events = new EventClient(1, "json", this.options);

@@ -401,6 +401,36 @@ export class Channel {
   }
 
   /**
+   * Permission another server member has against this channel
+   *
+   * Answers "may they do this here?" rather than "may I?", which is what a
+   * client needs to judge something another participant claims to be allowed
+   * to do.
+   *
+   * @param member Member to calculate for
+   * @returns Their permission value against this channel
+   */
+  permissionFor(member: ServerMember): bigint {
+    return calculatePermission(this.#collection.client, this, { member });
+  }
+
+  /**
+   * Check whether another server member has a given permission in this channel
+   * @param member Member to check
+   * @param permission Permission Names
+   * @returns Whether they have this permission
+   */
+  memberHavePermission(
+    member: ServerMember,
+    ...permission: (keyof typeof Permission)[]
+  ): boolean {
+    return bitwiseAndEq(
+      this.permissionFor(member),
+      ...permission.map((x) => Permission[x]),
+    );
+  }
+
+  /**
    * Check whether we have at least one of the given permissions in a channel
    * @param permission Permission Names
    * @returns Whether we have one of the permissions
