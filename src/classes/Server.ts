@@ -21,6 +21,11 @@ import { decodeTime } from "ulid";
 
 import type { ServerCollection } from "../collections/ServerCollection.js";
 import { hydrate } from "../hydration/index.js";
+import {
+  createSound,
+  deleteSound,
+  type DataCreateSound,
+} from "../lib/soundboard.js";
 import type { ServerFlags } from "../hydration/server.js";
 import { HydratedServerMember } from "../hydration/serverMember.js";
 import { HydratedUser } from "../hydration/user.js";
@@ -37,6 +42,7 @@ import { ChannelInvite } from "./Invite.js";
 import { ServerBan } from "./ServerBan.js";
 import { ServerMember } from "./ServerMember.js";
 import { ServerRole } from "./ServerRole.js";
+import type { Sound } from "./Sound.js";
 import { User } from "./User.js";
 import { VoiceStatus } from "./VoiceParticipant.js";
 
@@ -827,6 +833,43 @@ export class Server {
    */
   async deleteEmoji(emojiId: string): Promise<void> {
     await this.#collection.client.api.delete(`/custom/emoji/${emojiId}`);
+  }
+
+  /**
+   * Create a soundboard sound on the server
+   * @param autumnId Autumn Id
+   * @param options Options
+   */
+  async createSound(
+    autumnId: string,
+    options: Omit<DataCreateSound, "parent">,
+  ): Promise<Sound> {
+    const sound = await createSound(this.#collection.client, autumnId, {
+      parent: {
+        type: "Server",
+        id: this.id,
+      },
+      ...options,
+    });
+
+    return this.#collection.client.sounds.getOrCreate(sound._id, sound, true);
+  }
+
+  /**
+   * All soundboard sounds tied to this server
+   */
+  get sounds(): Sound[] {
+    return this.#collection.client.sounds.filter(
+      (sound) => sound.parent.type === "Server" && sound.parent.id === this.id,
+    );
+  }
+
+  /**
+   * Delete a soundboard sound
+   * @param soundId Sound ID
+   */
+  async deleteSound(soundId: string): Promise<void> {
+    await deleteSound(this.#collection.client, soundId);
   }
 
   /**

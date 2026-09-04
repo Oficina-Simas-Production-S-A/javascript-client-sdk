@@ -25,6 +25,7 @@ import { MessageEmbed } from "../classes/MessageEmbed.js";
 import { ServerRole } from "../classes/ServerRole.js";
 import { VoiceParticipant } from "../classes/VoiceParticipant.js";
 import { hydrate } from "../hydration/index.js";
+import type { APISound } from "../lib/soundboard.js";
 
 /**
  * Version 1 of the events protocol
@@ -123,6 +124,8 @@ type ServerMessage =
       id: string;
       server: Server;
       channels: Channel[];
+      emojis?: Emoji[];
+      sounds?: APISound[];
     }
   | {
       type: "ServerUpdate";
@@ -163,6 +166,14 @@ type ServerMessage =
   | { type: "UserPlatformWipe"; user_id: string; flags: number }
   | ({ type: "EmojiCreate" } & Emoji)
   | { type: "EmojiDelete"; id: string }
+  | ({ type: "SoundCreate" } & APISound)
+  | {
+      type: "SoundUpdate";
+      id: string;
+      data: Partial<APISound>;
+      clear?: "Emoji"[];
+    }
+  | { type: "SoundDelete"; id: string }
   | ({
       type: "Auth";
     } & (
@@ -259,6 +270,7 @@ type ReadyData = {
   channels: Channel[];
   members: Member[];
   emojis: Emoji[];
+  sounds: APISound[];
   voice_states: ChannelVoiceState[];
 
   user_settings: Record<string, unknown>;
@@ -337,6 +349,12 @@ export async function handleEvent(
         if (event.emojis) {
           for (const emoji of event.emojis) {
             client.emojis.getOrCreate(emoji._id, emoji);
+          }
+        }
+
+        if (event.sounds) {
+          for (const sound of event.sounds) {
+            client.sounds.getOrCreate(sound._id, sound);
           }
         }
       });
@@ -669,6 +687,14 @@ export async function handleEvent(
             client.channels.getOrCreate(channel._id, channel);
           }
 
+          for (const emoji of event.emojis ?? []) {
+            client.emojis.getOrCreate(emoji._id, emoji);
+          }
+
+          for (const sound of event.sounds ?? []) {
+            client.sounds.getOrCreate(sound._id, sound);
+          }
+
           client.servers.getOrCreate(event.server._id, event.server, true);
         });
       }
@@ -982,6 +1008,38 @@ export async function handleEvent(
         const emoji = client.emojis.getUnderlyingObject(event.id);
         client.emit("emojiDelete", emoji);
         client.emojis.delete(event.id);
+      }
+      break;
+    }
+    case "SoundCreate": {
+      if (!client.sounds.has(event._id)) {
+        client.sounds.getOrCreate(event._id, event, true);
+      }
+      break;
+    }
+    case "SoundUpdate": {
+      if (client.sounds.getOrPartial(event.id)) {
+        const changes = hydrate("sound", event.data, client, false);
+
+        if (event.clear) {
+          for (const remove of event.clear) {
+            switch (remove) {
+              case "Emoji":
+                changes["emoji"] = undefined;
+                break;
+            }
+          }
+        }
+
+        client.sounds.updateUnderlyingObject(event.id, changes);
+      }
+      break;
+    }
+    case "SoundDelete": {
+      if (client.sounds.getOrPartial(event.id)) {
+        const sound = client.sounds.getUnderlyingObject(event.id);
+        client.emit("soundDelete", sound);
+        client.sounds.delete(event.id);
       }
       break;
     }
