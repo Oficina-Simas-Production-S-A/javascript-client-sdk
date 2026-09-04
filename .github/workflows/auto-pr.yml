@@ -47,7 +47,7 @@ jobs:
             echo "- [ ] CI verde"
             echo "- [ ] Cliente que consome este SDK compila com a mudança"
             echo
-            echo "> Depois do merge, o \`stoat-web-dev\` precisa avançar o ponteiro do submódulo \`packages/stoat.js\` para a nova ponta da main."
+            echo "> Depois do merge, o \`stoat-web-dev\` avança o ponteiro do submódulo \`packages/stoat.js\` — automaticamente pelo workflow **Sincronizar SDK** de lá, ou na mão se você não quiser esperar."
           } > "${RUNNER_TEMP}/pr-body.md"
 
       - name: Criar PR se ainda não existir
