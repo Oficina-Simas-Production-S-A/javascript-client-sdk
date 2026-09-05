@@ -11,6 +11,12 @@ import type { Merge } from "../lib/merge.js";
 
 import type { Hydrate } from "./index.js";
 
+/**
+ * A message carries sticker ids, but the published `stoat-api` package does
+ * not describe the field yet. Sai quando o pacote for republicado.
+ */
+type MessageWithStickers = Message & { stickers?: string[] };
+
 export type HydratedMessage = {
   id: string;
   nonce?: string;
@@ -20,6 +26,7 @@ export type HydratedMessage = {
   content?: string;
   systemMessage?: SystemMessage;
   attachments?: File[];
+  stickerIds?: string[];
   editedAt?: Date;
   embeds?: MessageEmbed[];
   mentionIds?: string[];
@@ -32,12 +39,16 @@ export type HydratedMessage = {
   flags?: MessageFlags;
 };
 
-export const messageHydration: Hydrate<Merge<Message>, HydratedMessage> = {
+export const messageHydration: Hydrate<
+  Merge<MessageWithStickers>,
+  HydratedMessage
+> = {
   keyMapping: {
     _id: "id",
     channel: "channelId",
     author: "authorId",
     system: "systemMessage",
+    stickers: "stickerIds",
     edited: "editedAt",
     mentions: "mentionIds",
     role_mentions: "roleMentionIds",
@@ -57,6 +68,7 @@ export const messageHydration: Hydrate<Merge<Message>, HydratedMessage> = {
       SystemMessage.from(ctx as Client, message, message.system!),
     attachments: (message, ctx) =>
       message.attachments!.map((file) => new File(ctx as Client, file)),
+    stickerIds: (message) => message.stickers!,
     editedAt: (message) => new Date(message.edited!),
     embeds: (message, ctx) =>
       message.embeds!.map((embed) => MessageEmbed.from(ctx as Client, embed)),

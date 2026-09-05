@@ -98,8 +98,11 @@ export const Permission = {
   /// Play soundboard sounds in a voice call
   UseSoundboard: 2n ** 41n,
 
+  /// Create and manage server stickers
+  ManageStickers: 2n ** 42n,
+
   // * Misc. permissions
-  // % Bits 42 to 52: free area
+  // % Bits 43 to 52: free area
   // % Bits 53 to 64: do not use
 
   // * Grant all permissions

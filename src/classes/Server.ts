@@ -32,6 +32,12 @@ import {
   fetchServerSounds,
 } from "../lib/soundboard.js";
 import {
+  type DataCreateSticker,
+  createSticker,
+  deleteSticker,
+  fetchServerStickers,
+} from "../lib/stickers.js";
+import {
   bitwiseAndEq,
   calculatePermission,
 } from "../permissions/calculator.js";
@@ -45,6 +51,7 @@ import { ServerBan } from "./ServerBan.js";
 import { ServerMember } from "./ServerMember.js";
 import { ServerRole } from "./ServerRole.js";
 import type { Sound } from "./Sound.js";
+import type { Sticker } from "./Sticker.js";
 import { User } from "./User.js";
 import { VoiceStatus } from "./VoiceParticipant.js";
 
@@ -886,6 +893,65 @@ export class Server {
    */
   async deleteSound(soundId: string): Promise<void> {
     await deleteSound(this.#collection.client, soundId);
+  }
+
+  /**
+   * Create a sticker on the server
+   * @param autumnId Autumn Id
+   * @param options Options
+   */
+  async createSticker(
+    autumnId: string,
+    options: Omit<DataCreateSticker, "parent">,
+  ): Promise<Sticker> {
+    const sticker = await createSticker(this.#collection.client, autumnId, {
+      parent: {
+        type: "Server",
+        id: this.id,
+      },
+      ...options,
+    });
+
+    return this.#collection.client.stickers.getOrCreate(
+      sticker._id,
+      sticker,
+      true,
+    );
+  }
+
+  /**
+   * Fetch a server's stickers
+   * @returns List of server stickers
+   */
+  async fetchStickers(): Promise<Sticker[]> {
+    const stickers = await fetchServerStickers(
+      this.#collection.client,
+      this.id,
+    );
+
+    return batch(() =>
+      stickers.map((sticker) =>
+        this.#collection.client.stickers.getOrCreate(sticker._id, sticker),
+      ),
+    );
+  }
+
+  /**
+   * All stickers tied to this server
+   */
+  get stickers(): Sticker[] {
+    return this.#collection.client.stickers.filter(
+      (sticker) =>
+        sticker.parent.type === "Server" && sticker.parent.id === this.id,
+    );
+  }
+
+  /**
+   * Delete a sticker
+   * @param stickerId Sticker ID
+   */
+  async deleteSticker(stickerId: string): Promise<void> {
+    await deleteSticker(this.#collection.client, stickerId);
   }
 
   /**

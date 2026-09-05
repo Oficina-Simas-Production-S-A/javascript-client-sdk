@@ -26,6 +26,7 @@ import { ServerRole } from "../classes/ServerRole.js";
 import { VoiceParticipant } from "../classes/VoiceParticipant.js";
 import { hydrate } from "../hydration/index.js";
 import type { APISound } from "../lib/soundboard.js";
+import type { APISticker } from "../lib/stickers.js";
 
 /**
  * Version 1 of the events protocol
@@ -126,6 +127,7 @@ type ServerMessage =
       channels: Channel[];
       emojis?: Emoji[];
       sounds?: APISound[];
+      stickers?: APISticker[];
     }
   | {
       type: "ServerUpdate";
@@ -174,6 +176,13 @@ type ServerMessage =
       clear?: "Emoji"[];
     }
   | { type: "SoundDelete"; id: string }
+  | ({ type: "StickerCreate" } & APISticker)
+  | {
+      type: "StickerUpdate";
+      id: string;
+      data: Partial<APISticker>;
+    }
+  | { type: "StickerDelete"; id: string }
   | ({
       type: "Auth";
     } & (
@@ -271,6 +280,7 @@ type ReadyData = {
   members: Member[];
   emojis: Emoji[];
   sounds: APISound[];
+  stickers: APISticker[];
   voice_states: ChannelVoiceState[];
 
   user_settings: Record<string, unknown>;
@@ -355,6 +365,12 @@ export async function handleEvent(
         if (event.sounds) {
           for (const sound of event.sounds) {
             client.sounds.getOrCreate(sound._id, sound);
+          }
+        }
+
+        if (event.stickers) {
+          for (const sticker of event.stickers) {
+            client.stickers.getOrCreate(sticker._id, sticker);
           }
         }
       });
@@ -693,6 +709,10 @@ export async function handleEvent(
 
           for (const sound of event.sounds ?? []) {
             client.sounds.getOrCreate(sound._id, sound);
+          }
+
+          for (const sticker of event.stickers ?? []) {
+            client.stickers.getOrCreate(sticker._id, sticker);
           }
 
           client.servers.getOrCreate(event.server._id, event.server, true);
@@ -1044,6 +1064,27 @@ export async function handleEvent(
         const sound = client.sounds.getUnderlyingObject(event.id);
         client.emit("soundDelete", sound);
         client.sounds.delete(event.id);
+      }
+      break;
+    }
+    case "StickerCreate": {
+      if (!client.stickers.has(event._id)) {
+        client.stickers.getOrCreate(event._id, event, true);
+      }
+      break;
+    }
+    case "StickerUpdate": {
+      if (client.stickers.getOrPartial(event.id)) {
+        const changes = hydrate("sticker", event.data, client, false);
+        client.stickers.updateUnderlyingObject(event.id, changes);
+      }
+      break;
+    }
+    case "StickerDelete": {
+      if (client.stickers.getOrPartial(event.id)) {
+        const sticker = client.stickers.getUnderlyingObject(event.id);
+        client.emit("stickerDelete", sticker);
+        client.stickers.delete(event.id);
       }
       break;
     }
