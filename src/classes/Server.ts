@@ -29,6 +29,7 @@ import {
   type DataCreateSound,
   createSound,
   deleteSound,
+  fetchServerSounds,
 } from "../lib/soundboard.js";
 import {
   bitwiseAndEq,
@@ -854,6 +855,20 @@ export class Server {
     });
 
     return this.#collection.client.sounds.getOrCreate(sound._id, sound, true);
+  }
+
+  /**
+   * Fetch a server's soundboard sounds
+   * @returns List of server sounds
+   */
+  async fetchSounds(): Promise<Sound[]> {
+    const sounds = await fetchServerSounds(this.#collection.client, this.id);
+
+    return batch(() =>
+      sounds.map((sound) =>
+        this.#collection.client.sounds.getOrCreate(sound._id, sound),
+      ),
+    );
   }
 
   /**
