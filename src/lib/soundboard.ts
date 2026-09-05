@@ -75,6 +75,20 @@ export function fetchSound(client: Client, id: string): Promise<APISound> {
 }
 
 /**
+ * List every sound on a server
+ *
+ * O `Ready` ja traz os sons de todos os servidores, mas depender so dele
+ * significa que qualquer falha na entrega deixa a lista vazia sem nenhum jeito
+ * de recuperar. Esta rota da um caminho que nao passa pelo websocket.
+ */
+export function fetchServerSounds(
+  client: Client,
+  serverId: string,
+): Promise<APISound[]> {
+  return request<APISound[]>(client, "GET", `/servers/${serverId}/sounds`);
+}
+
+/**
  * Create a sound from an Autumn upload id
  */
 export function createSound(
