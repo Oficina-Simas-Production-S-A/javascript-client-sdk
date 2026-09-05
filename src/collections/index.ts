@@ -10,4 +10,5 @@ export { ServerCollection } from "./ServerCollection.js";
 export { ServerMemberCollection } from "./ServerMemberCollection.js";
 export { SessionCollection } from "./SessionCollection.js";
 export { SoundCollection } from "./SoundCollection.js";
+export { StickerCollection } from "./StickerCollection.js";
 export { UserCollection } from "./UserCollection.js";

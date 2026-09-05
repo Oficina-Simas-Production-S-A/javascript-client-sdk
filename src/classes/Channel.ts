@@ -34,6 +34,16 @@ import type { User } from "./User.js";
 import { VoiceParticipant, VoiceStatus } from "./VoiceParticipant.js";
 
 /**
+ * Message sending data plus the sticker ids
+ *
+ * The published `stoat-api` spec does not carry `stickers` yet. Sai quando o
+ * pacote for republicado.
+ */
+export type DataMessageSendWithStickers = DataMessageSend & {
+  stickers?: string[];
+};
+
+/**
  * Channel Class
  */
 export class Channel {
@@ -562,10 +572,10 @@ export class Channel {
    * @returns Sent message
    */
   async sendMessage(
-    data: string | DataMessageSend,
+    data: string | DataMessageSendWithStickers,
     idempotencyKey: string = ulid(),
   ): Promise<Message> {
-    const msg: DataMessageSend =
+    const msg: DataMessageSendWithStickers =
       typeof data === "string" ? { content: data } : data;
 
     // Mark as silent message
@@ -577,7 +587,10 @@ export class Channel {
 
     const message = await this.#collection.client.api.post(
       `/channels/${this.id as ""}/messages`,
-      msg,
+      // `stickers` is not in the published `stoat-api` spec yet; the server
+      // accepts it and ignores nothing else. Sai quando o pacote for
+      // republicado.
+      msg as DataMessageSend,
       {
         headers: {
           "Idempotency-Key": idempotencyKey,

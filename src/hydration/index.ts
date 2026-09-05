@@ -8,6 +8,7 @@ import { serverHydration } from "./server.js";
 import { serverMemberHydration } from "./serverMember.js";
 import { sessionHydration } from "./session.js";
 import { soundHydration } from "./sound.js";
+import { stickerHydration } from "./sticker.js";
 import { userHydration } from "./user.js";
 
 /**
@@ -78,6 +79,7 @@ const hydrators = {
   serverMember: serverMemberHydration,
   session: sessionHydration,
   sound: soundHydration,
+  sticker: stickerHydration,
   user: userHydration,
 };
 

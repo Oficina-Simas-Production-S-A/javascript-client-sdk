@@ -159,6 +159,16 @@ export class Message {
   }
 
   /**
+   * Ids of the stickers sent with this message
+   *
+   * Only ids travel with the message; resolve them through
+   * `client.stickers.fetch`.
+   */
+  get stickerIds(): string[] | undefined {
+    return this.#collection.getUnderlyingObject(this.id).stickerIds;
+  }
+
+  /**
    * Time at which this message was edited
    */
   get editedAt(): Date | undefined {
