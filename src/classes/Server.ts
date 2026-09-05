@@ -924,7 +924,10 @@ export class Server {
    * @returns List of server stickers
    */
   async fetchStickers(): Promise<Sticker[]> {
-    const stickers = await fetchServerStickers(this.#collection.client, this.id);
+    const stickers = await fetchServerStickers(
+      this.#collection.client,
+      this.id,
+    );
 
     return batch(() =>
       stickers.map((sticker) =>

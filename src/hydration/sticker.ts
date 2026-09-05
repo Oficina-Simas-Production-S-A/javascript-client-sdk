@@ -11,10 +11,7 @@ export type HydratedSticker = {
   description: string;
 };
 
-export const stickerHydration: Hydrate<
-  Merge<APISticker>,
-  HydratedSticker
-> = {
+export const stickerHydration: Hydrate<Merge<APISticker>, HydratedSticker> = {
   keyMapping: {
     _id: "id",
     creator_id: "creatorId",

@@ -10,7 +10,9 @@ import type { Client } from "../Client.js";
  */
 
 /** What owns a sticker */
-export type StickerParent = { type: "Server"; id: string } | { type: "Detached" };
+export type StickerParent =
+  | { type: "Server"; id: string }
+  | { type: "Detached" };
 
 /** Sticker as the API returns it */
 export type APISticker = {
