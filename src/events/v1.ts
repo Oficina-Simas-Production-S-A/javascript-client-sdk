@@ -342,6 +342,18 @@ export async function handleEvent(
         }
 
         if (event.voice_states) {
+          // Ready is the whole truth, so a channel NOT listed has nobody in
+          // it. Only rewriting the listed ones left a call that emptied while
+          // the socket was down (sleep, network, app in the tray) showing its
+          // old participants until a reload — the leave events were sent to
+          // a socket that was not there.
+          const occupied = new Set(event.voice_states.map((state) => state.id));
+          client.channels.forEach((channel) => {
+            if (!occupied.has(channel.id) && channel.voiceParticipants.size) {
+              channel.voiceParticipants.clear();
+            }
+          });
+
           for (const state of event.voice_states) {
             const channel = client.channels.get(state.id);
             if (channel) {
@@ -1112,7 +1124,18 @@ export async function handleEvent(
       break;
     }
     case "VoiceChannelMove": {
-      // todo
+      // A moderator moved someone. The API sends this INSTEAD of a leave and
+      // a join, so ignoring it left the person as a ghost in the old channel
+      // and missing from the new one.
+      client.channels
+        .getOrPartial(event.from)
+        ?.voiceParticipants.delete(event.user);
+      client.channels
+        .getOrPartial(event.to)
+        ?.voiceParticipants.set(
+          event.state.id,
+          new VoiceParticipant(client, event.state),
+        );
       break;
     }
     case "UserVoiceStateUpdate": {
