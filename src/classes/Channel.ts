@@ -19,6 +19,7 @@ import { decodeTime, ulid } from "ulid";
 import { ChannelCollection } from "../collections/index.js";
 import { UserSlowmodes } from "../events/v1.js";
 import { hydrate } from "../hydration/index.js";
+import { request } from "../lib/soundboard.js";
 import {
   bitwiseAndEq,
   calculatePermission,
@@ -878,6 +879,23 @@ export class Channel {
         ),
         force_disconnect: forceDisconnect,
       },
+    );
+  }
+
+  /**
+   * Turn streamer mode on or off for yourself in this channel's call.
+   * While anyone in the call has it on, the soundboard is locked there.
+   *
+   * Goes around `client.api`: the published `stoat-api` package does not
+   * have the route yet. Move it to `client.api.put` once it does.
+   * @param live Whether the call is being broadcast outside
+   */
+  async setLive(live: boolean): Promise<void> {
+    await request<void>(
+      this.#collection.client,
+      "PUT",
+      `/channels/${this.id}/live`,
+      { live },
     );
   }
 

@@ -223,7 +223,13 @@ type ServerMessage =
   | {
       type: "UserMoveVoiceChannel";
       node: string;
+      from: string;
+      to: string;
       token: string;
+    }
+  | {
+      type: "VoiceDisconnected";
+      channel_id: string;
     }
   | {
       type: "UserSlowmodes";
@@ -250,6 +256,11 @@ export type UserVoiceState = {
   is_publishing: boolean;
   screensharing: boolean;
   camera: boolean;
+  /**
+   * Streamer mode: the call is being broadcast outside. Optional because an
+   * API from before it does not send the field.
+   */
+  live?: boolean;
 };
 
 /**
@@ -1141,13 +1152,47 @@ export async function handleEvent(
     case "UserVoiceStateUpdate": {
       const channel = client.channels.getOrPartial(event.channel_id);
       if (channel) {
-        channel.voiceParticipants.get(event.id)?.update(event.data);
-        // todo: event
+        // An update can arrive before this client knows the participant
+        // (a join it missed, a state fetched before they joined). Dropping
+        // it lost the flag for good; creating the participant keeps it.
+        // This used to be a patch applied only in the web's Docker build.
+        const existing = channel.voiceParticipants.get(event.id);
+        if (existing) {
+          existing.update(event.data);
+        } else {
+          channel.voiceParticipants.set(
+            event.id,
+            new VoiceParticipant(client, {
+              id: event.id,
+              joined_at: Date.now(),
+              is_receiving: event.data.is_receiving ?? true,
+              is_publishing: event.data.is_publishing ?? false,
+              screensharing: event.data.screensharing ?? false,
+              camera: event.data.camera ?? false,
+              live: event.data.live ?? false,
+            }),
+          );
+        }
       }
       break;
     }
     case "UserMoveVoiceChannel": {
-      // todo
+      // Sent only to whoever was moved, before the server drops them from
+      // the old room. The client rejoins on its own; the token here is a
+      // single one, and the native encoder split needs the pair join_call
+      // hands out, so it is passed along but not required.
+      client.emit("voiceMoved", {
+        node: event.node,
+        from: event.from,
+        to: event.to,
+        token: event.token,
+      });
+      break;
+    }
+    case "VoiceDisconnected": {
+      // Sent only to whoever a moderator took out of the call, before the
+      // removal. Tells it apart from a removal for joining elsewhere.
+      client.emit("voiceDisconnected", event.channel_id);
       break;
     }
     case "UserSlowmodes": {
