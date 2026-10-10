@@ -38,7 +38,7 @@ export type DataEditSound = {
 /**
  * Call an API route that `client.api` does not know about yet
  */
-async function request<T>(
+export async function request<T>(
   client: Client,
   method: "GET" | "PUT" | "PATCH" | "DELETE",
   path: string,

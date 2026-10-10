@@ -101,8 +101,12 @@ export const Permission = {
   /// Create and manage server stickers
   ManageStickers: 2n ** 42n,
 
+  /// Disconnect members with lower ranking from a voice call
+  /// (MoveMembers also allows it)
+  DisconnectMembers: 2n ** 43n,
+
   // * Misc. permissions
-  // % Bits 43 to 52: free area
+  // % Bits 44 to 52: free area
   // % Bits 53 to 64: do not use
 
   // * Grant all permissions
