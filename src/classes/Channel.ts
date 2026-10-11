@@ -55,6 +55,9 @@ export class Channel {
 
   voiceParticipants = new ReactiveMap<string, VoiceParticipant>();
 
+  readonly #callStartedAt: Accessor<Date | undefined>;
+  readonly #setCallStartedAt: Setter<Date | undefined>;
+
   readonly userSlowmode: Accessor<UserSlowmodes | undefined>;
   readonly #setUserSlowmode: Setter<UserSlowmodes | undefined>;
   #slowmodeTimeout: NodeJS.Timeout | undefined;
@@ -71,6 +74,10 @@ export class Channel {
     const [slowmode, setSlowmode] = createSignal<UserSlowmodes | undefined>();
     this.userSlowmode = slowmode;
     this.#setUserSlowmode = setSlowmode;
+
+    const [callStartedAt, setCallStartedAt] = createSignal<Date>();
+    this.#callStartedAt = callStartedAt;
+    this.#setCallStartedAt = setCallStartedAt;
   }
 
   /**
@@ -943,6 +950,44 @@ export class Channel {
     }
 
     return highest;
+  }
+
+  /**
+   * When the ongoing call in this channel began, the same moment for everyone
+   * looking at it, including whoever arrives hours later. Undefined while
+   * nobody is in the channel.
+   *
+   * Falls back to the earliest participant still here when the server never
+   * recorded a start (an older API, or a call opened before it did). That
+   * fallback moves if that person leaves; the recorded start does not.
+   */
+  get voiceStartedAt(): Date | undefined {
+    if (this.voiceParticipants.size === 0) {
+      return undefined;
+    }
+
+    const recorded = this.#callStartedAt();
+    if (recorded) {
+      return recorded;
+    }
+
+    let earliest: Date | undefined;
+    for (const participant of this.voiceParticipants.values()) {
+      if (!earliest || participant.joinedAt < earliest) {
+        earliest = participant.joinedAt;
+      }
+    }
+
+    return earliest;
+  }
+
+  /**
+   * Record when the ongoing call began
+   * @param startedAt Start, or undefined once the call is over
+   * @internal
+   */
+  _setVoiceStartedAt(startedAt: Date | undefined) {
+    this.#setCallStartedAt(startedAt);
   }
 
   setUserSlowmode(slowmode: UserSlowmodes) {
