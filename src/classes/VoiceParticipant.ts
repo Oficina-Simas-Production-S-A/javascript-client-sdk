@@ -24,12 +24,18 @@ export class VoiceParticipant {
    * Streamer mode: broadcasting the call outside
    */
   readonly isLive: Accessor<boolean>;
+  /**
+   * Clips are on for this participant's screen share: the server keeps its
+   * last minutes to cut clips from
+   */
+  readonly isRecording: Accessor<boolean>;
 
   #setReceiving: Setter<boolean>;
   #setPublishing: Setter<boolean>;
   #setScreensharing: Setter<boolean>;
   #setCamera: Setter<boolean>;
   #setLive: Setter<boolean>;
+  #setRecording: Setter<boolean>;
 
   /**
    * Construct Server Ban
@@ -62,6 +68,10 @@ export class VoiceParticipant {
     const [isLive, setLive] = createSignal(data.live ?? false);
     this.isLive = isLive;
     this.#setLive = setLive;
+
+    const [isRecording, setRecording] = createSignal(data.recording ?? false);
+    this.isRecording = isRecording;
+    this.#setRecording = setRecording;
   }
 
   /**
@@ -87,6 +97,10 @@ export class VoiceParticipant {
 
     if (typeof data.live === "boolean") {
       this.#setLive(data.live);
+    }
+
+    if (typeof data.recording === "boolean") {
+      this.#setRecording(data.recording);
     }
   }
 

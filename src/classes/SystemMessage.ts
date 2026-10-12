@@ -61,6 +61,13 @@ export abstract class SystemMessage {
       case "call_started":
         return new CallStartedSystemMessage(client, parent, message);
       default:
+        // Not in the published `stoat-api` union yet, hence the string test.
+        if ((message as { type: string }).type === "recording_started") {
+          return new RecordingStartedSystemMessage(
+            client,
+            message as unknown as { by: string },
+          );
+        }
         return new TextSystemMessage(client, {
           type: "text",
           content: `${(message as { type: string }).type} is not supported.`,
@@ -314,6 +321,33 @@ export class CallStartedSystemMessage extends SystemMessage {
 
   /**
    * User that started the call
+   */
+  get by(): User | undefined {
+    return this.client!.users.get(this.byId);
+  }
+}
+
+/**
+ * Recording Started System Message: `by` turned clips on for their screen
+ * share (the server keeps its last minutes to cut clips from). Everyone in
+ * the channel sees it — it is part of the consent notice, next to the badge
+ * in the call.
+ */
+export class RecordingStartedSystemMessage extends SystemMessage {
+  readonly byId: string;
+
+  /**
+   * Construct System Message
+   * @param client Client
+   * @param systemMessage System Message
+   */
+  constructor(client: Client, systemMessage: { by: string }) {
+    super(client, "recording_started" as APISystemMessage["type"]);
+    this.byId = systemMessage.by;
+  }
+
+  /**
+   * User who turned the clips on
    */
   get by(): User | undefined {
     return this.client!.users.get(this.byId);

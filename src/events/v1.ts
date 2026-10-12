@@ -261,6 +261,11 @@ export type UserVoiceState = {
    * API from before it does not send the field.
    */
   live?: boolean;
+  /**
+   * Clips are on for this person's screen share (the server keeps its last
+   * minutes). Optional for the same reason as `live`.
+   */
+  recording?: boolean;
 };
 
 /**
@@ -1170,6 +1175,7 @@ export async function handleEvent(
               screensharing: event.data.screensharing ?? false,
               camera: event.data.camera ?? false,
               live: event.data.live ?? false,
+              recording: event.data.recording ?? false,
             }),
           );
         }

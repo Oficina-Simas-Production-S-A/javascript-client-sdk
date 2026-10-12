@@ -40,7 +40,7 @@ export type DataEditSound = {
  */
 export async function request<T>(
   client: Client,
-  method: "GET" | "PUT" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<T> {
