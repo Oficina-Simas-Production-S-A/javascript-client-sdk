@@ -900,6 +900,23 @@ export class Channel {
   }
 
   /**
+   * Turn recording of your own screen share on or off in this channel's
+   * call. The server only accepts it from a share made through the desktop
+   * app's native encoder.
+   *
+   * Goes around `client.api` for the same reason as `setLive`.
+   * @param recording Whether the server should record the share
+   */
+  async setRecording(recording: boolean): Promise<void> {
+    await request<void>(
+      this.#collection.client,
+      "PUT",
+      `/channels/${this.id}/recording`,
+      { recording },
+    );
+  }
+
+  /**
    * Start typing in this channel
    * @requires `DirectMessage`, `Group`, `TextChannel`
    */
