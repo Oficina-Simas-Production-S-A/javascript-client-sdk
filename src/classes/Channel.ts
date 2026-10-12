@@ -900,9 +900,10 @@ export class Channel {
   }
 
   /**
-   * Turn recording of your own screen share on or off in this channel's
-   * call. The server only accepts it from a share made through the desktop
-   * app's native encoder.
+   * Turn clips of your own screen share on or off in this channel's call.
+   * The live is not recorded: with clips on, the server keeps only its last
+   * minutes to cut clips from. It only accepts it from a share made through
+   * the desktop app's native encoder.
    *
    * Goes around `client.api` for the same reason as `setLive`.
    * @param recording Whether the server should record the share

@@ -262,8 +262,8 @@ export type UserVoiceState = {
    */
   live?: boolean;
   /**
-   * The server is recording this person's screen share. Optional for the
-   * same reason as `live`.
+   * Clips are on for this person's screen share (the server keeps its last
+   * minutes). Optional for the same reason as `live`.
    */
   recording?: boolean;
 };

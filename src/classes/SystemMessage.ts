@@ -328,9 +328,10 @@ export class CallStartedSystemMessage extends SystemMessage {
 }
 
 /**
- * Recording Started System Message: the server started recording `by`'s
- * screen share. Everyone in the channel sees it — it is part of the consent
- * notice, next to the badge in the call.
+ * Recording Started System Message: `by` turned clips on for their screen
+ * share (the server keeps its last minutes to cut clips from). Everyone in
+ * the channel sees it — it is part of the consent notice, next to the badge
+ * in the call.
  */
 export class RecordingStartedSystemMessage extends SystemMessage {
   readonly byId: string;
@@ -346,7 +347,7 @@ export class RecordingStartedSystemMessage extends SystemMessage {
   }
 
   /**
-   * User whose share is being recorded
+   * User who turned the clips on
    */
   get by(): User | undefined {
     return this.client!.users.get(this.byId);

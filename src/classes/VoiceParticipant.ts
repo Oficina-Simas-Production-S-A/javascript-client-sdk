@@ -25,7 +25,8 @@ export class VoiceParticipant {
    */
   readonly isLive: Accessor<boolean>;
   /**
-   * The server is recording this participant's screen share
+   * Clips are on for this participant's screen share: the server keeps its
+   * last minutes to cut clips from
    */
   readonly isRecording: Accessor<boolean>;
 

@@ -3,7 +3,11 @@ import type { Client } from "../Client.js";
 import { request } from "./soundboard.js";
 
 /**
- * Live recordings and clips: types and requests.
+ * Live clips: types and requests.
+ *
+ * Lives are not recorded (decided 12/10/2026). With clips on, the server
+ * keeps a buffer of a live's last minutes — an `APIRecording` — while it
+ * lasts and for a short while after, and clips are cut from it.
  *
  * Here and not in `stoat-api` for the same reason as the soundboard: the
  * published package does not carry these routes yet. Everything below
@@ -21,42 +25,32 @@ export type APIRecordingPart = {
   codec: "h265" | "h264";
   width: number;
   height: number;
-  /** Where the part starts, in ms from the start of the recording */
+  /** Where the part starts, in ms from the start of the live */
   offset_ms: number;
   duration_ms: number;
   size: number;
 };
 
-export type APIRecordingCopy = {
-  status: ConversionStatus;
-  /** 0 to 100 */
-  progress: number;
-  size: number;
-  expires_at: number;
-  /** 1 = next in the conversion queue */
-  queue_position?: number;
-};
-
+/** A live with clips on: the buffer of its last minutes */
 export type APIRecording = {
   _id: string;
   server: string;
   channel: string;
-  /** Who was sharing */
+  /** Who was sharing (and turned the clips on) */
   user: string;
+  /** "recording" while the live goes on */
   status: RecordingStatus;
   stop_reason?: string;
   started_at: number;
   ended_at?: number;
+  /** When the buffer goes (a few minutes after the live ends) */
   expires_at: number;
+  /** How long the live has been going; the buffer holds only its end */
   duration_ms: number;
   size: number;
   parts: APIRecordingPart[];
-  thumbnail: boolean;
-  copy?: APIRecordingCopy;
-  /** Signed link to the files, filled in by the list */
+  /** Signed link to the buffer, filled in by the list */
   access?: APIRecordingAccess;
-  /** Signed link to the H.264 copy, once ready */
-  copy_access?: APIRecordingAccess;
 };
 
 export type APIClip = {
@@ -85,12 +79,16 @@ export type APIClip = {
   access?: APIRecordingAccess;
 };
 
+/** Space used by clips */
 export type APIRecordingStorage = {
   used: number;
   quota: number;
-  /** New recordings, clips and copies are refused while set */
+  /** New clips are refused while set */
   blocked: boolean;
-  /** "cota" (quota reached) or "disco" (disk nearly full) */
+  /**
+   * "cota" (clip quota reached), "disco" (disk nearly full) or "envios"
+   * (the month's uploads to the bucket are used up)
+   */
   reason?: string;
 };
 
@@ -100,7 +98,7 @@ export type APIRecordingList = {
   storage: APIRecordingStorage;
 };
 
-/** Signed link to a recording's or clip's files */
+/** Signed link to a live buffer's or clip's files */
 export type APIRecordingAccess = {
   /** Base of the links, e.g. /gravador/arquivos/clipe/<id> */
   base: string;
@@ -117,21 +115,19 @@ export function fetchRecordings(
   return request(client, "GET", `/recordings/server/${serverId}`);
 }
 
-/** Cut a clip; it goes into the conversion queue */
+/**
+ * Cut a clip from a live's buffer; it goes into the conversion queue. Times
+ * are in ms from the start of the live; a start that already left the buffer
+ * is pulled to the oldest moment it still holds (the clip comes back with
+ * the stretch it really got). Fails with `ClipOutOfBuffer` if none of it is
+ * left.
+ */
 export function createClip(
   client: Client,
   recordingId: string,
   data: { start_ms: number; end_ms: number; mode: ClipMode },
 ): Promise<APIClip> {
   return request(client, "POST", `/recordings/${recordingId}/clips`, data);
-}
-
-/** Ask for (or reuse) the H.264 copy of a recording */
-export function requestRecordingCopy(
-  client: Client,
-  recordingId: string,
-): Promise<APIRecording> {
-  return request(client, "POST", `/recordings/${recordingId}/copy`);
 }
 
 export function deleteRecording(
@@ -150,13 +146,6 @@ export function fetchRecordingAccess(
   recordingId: string,
 ): Promise<APIRecordingAccess> {
   return request(client, "GET", `/recordings/${recordingId}/access`);
-}
-
-export function fetchRecordingCopyAccess(
-  client: Client,
-  recordingId: string,
-): Promise<APIRecordingAccess> {
-  return request(client, "GET", `/recordings/${recordingId}/copy/access`);
 }
 
 export function fetchClipAccess(
