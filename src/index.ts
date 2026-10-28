@@ -7,6 +7,11 @@ export { ConnectionState, EventClient } from "./events/EventClient.js";
 export { ProtocolV1 } from "./events/v1.js";
 export { BotFlags } from "./hydration/bot.js";
 export { ServerFlags } from "./hydration/server.js";
+export type {
+  WatchParty,
+  WatchPlaying,
+  WatchTrack,
+} from "./hydration/server.js";
 export { UserBadges, UserFlags } from "./hydration/user.js";
 export * from "./lib/regex.js";
 export * from "./lib/recordings.js";

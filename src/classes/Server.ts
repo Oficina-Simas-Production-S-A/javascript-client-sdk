@@ -22,7 +22,7 @@ import { decodeTime } from "ulid";
 
 import type { ServerCollection } from "../collections/ServerCollection.js";
 import { hydrate } from "../hydration/index.js";
-import type { ServerFlags } from "../hydration/server.js";
+import type { ServerFlags, WatchParty } from "../hydration/server.js";
 import { HydratedServerMember } from "../hydration/serverMember.js";
 import { HydratedUser } from "../hydration/user.js";
 import {
@@ -142,6 +142,13 @@ export class Server {
    */
   get banner(): File | undefined {
     return this.#collection.getUnderlyingObject(this.id).banner;
+  }
+
+  /**
+   * YouTube the members watch together
+   */
+  get watchParty(): WatchParty | undefined {
+    return this.#collection.getUnderlyingObject(this.id).watchParty;
   }
 
   /**
