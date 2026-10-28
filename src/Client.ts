@@ -117,9 +117,7 @@ export type Events = {
   /**
    * A moderator moved you to another voice channel
    */
-  voiceMoved: [
-    move: { node: string; from: string; to: string; token: string },
-  ];
+  voiceMoved: [move: { node: string; from: string; to: string; token: string }];
 
   /**
    * A moderator took you out of a voice call
