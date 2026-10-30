@@ -49,9 +49,23 @@ export type WatchParty = {
 };
 
 /**
- * Server as sent by the API, with the watch party
+ * Point of the banner kept in view, in percent of each axis
+ * (the same as CSS `background-position`)
  */
-type ServerInput = APIServer & { watch_party?: WatchParty };
+export type BannerPosition = {
+  /** 0 is the left edge, 100 the right edge */
+  x: number;
+  /** 0 is the top edge, 100 the bottom edge */
+  y: number;
+};
+
+/**
+ * Server as sent by the API, with the watch party and the banner position
+ */
+type ServerInput = APIServer & {
+  watch_party?: WatchParty;
+  banner_position?: BannerPosition;
+};
 
 export type HydratedServer = {
   id: string;
@@ -62,6 +76,7 @@ export type HydratedServer = {
 
   icon?: File;
   banner?: File;
+  bannerPosition?: BannerPosition;
 
   channelIds: ReactiveSet<string>;
   categories?: Category[];
@@ -86,6 +101,7 @@ export const serverHydration: Hydrate<ServerInput, HydratedServer> = {
     system_messages: "systemMessages",
     default_permissions: "defaultPermissions",
     watch_party: "watchParty",
+    banner_position: "bannerPosition",
   },
   functions: {
     id: (server) => server._id,
@@ -105,6 +121,7 @@ export const serverHydration: Hydrate<ServerInput, HydratedServer> = {
     defaultPermissions: (server) => BigInt(server.default_permissions),
     icon: (server, ctx) => new File(ctx as Client, server.icon!),
     banner: (server, ctx) => new File(ctx as Client, server.banner!),
+    bannerPosition: (server) => server.banner_position!,
     flags: (server) => server.flags!,
     analytics: (server) => server.analytics || false,
     discoverable: (server) => server.discoverable || false,

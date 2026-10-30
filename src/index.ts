@@ -8,6 +8,7 @@ export { ProtocolV1 } from "./events/v1.js";
 export { BotFlags } from "./hydration/bot.js";
 export { ServerFlags } from "./hydration/server.js";
 export type {
+  BannerPosition,
   WatchParty,
   WatchPlaying,
   WatchTrack,
