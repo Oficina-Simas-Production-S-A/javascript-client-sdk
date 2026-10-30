@@ -22,7 +22,11 @@ import { decodeTime } from "ulid";
 
 import type { ServerCollection } from "../collections/ServerCollection.js";
 import { hydrate } from "../hydration/index.js";
-import type { ServerFlags, WatchParty } from "../hydration/server.js";
+import type {
+  BannerPosition,
+  ServerFlags,
+  WatchParty,
+} from "../hydration/server.js";
 import { HydratedServerMember } from "../hydration/serverMember.js";
 import { HydratedUser } from "../hydration/user.js";
 import {
@@ -142,6 +146,13 @@ export class Server {
    */
   get banner(): File | undefined {
     return this.#collection.getUnderlyingObject(this.id).banner;
+  }
+
+  /**
+   * Point of the banner kept in view
+   */
+  get bannerPosition(): BannerPosition | undefined {
+    return this.#collection.getUnderlyingObject(this.id).bannerPosition;
   }
 
   /**
@@ -447,7 +458,9 @@ export class Server {
    * Edit a server
    * @param data Changes
    */
-  async edit(data: DataEditServer): Promise<void> {
+  async edit(
+    data: DataEditServer & { banner_position?: BannerPosition },
+  ): Promise<void> {
     this.#collection.updateUnderlyingObject(
       this.id,
       hydrate(
