@@ -15,6 +15,8 @@ export class ChannelUnreadCollection extends ClassCollection<
   ChannelUnread,
   HydratedChannelUnread
 > {
+  #retry: number | undefined;
+
   /**
    * Load unread information from server
    *
@@ -26,6 +28,7 @@ export class ChannelUnreadCollection extends ClassCollection<
    * the server just sent, and the whole account would read as unread.
    */
   async sync(): Promise<void> {
+    clearTimeout(this.#retry);
     const unreads = await this.client.api.get("/sync/unreads");
 
     batch(() => {
@@ -42,6 +45,25 @@ export class ChannelUnreadCollection extends ClassCollection<
         if (!fromServer.has(id)) this.delete(id);
       }
     });
+  }
+
+  /**
+   * Try {@link sync} again after it failed, backing off (5 s, 15 s, 45 s).
+   * A later sync, such as the one of a reconnect's Ready, cancels the wait.
+   * @param attempt Retries already made
+   */
+  retrySync(attempt = 0): void {
+    clearTimeout(this.#retry);
+    if (attempt >= 3) return;
+
+    this.#retry = setTimeout(
+      () =>
+        this.sync().catch((error) => {
+          console.error("[unreads] sync retry failed:", error);
+          this.retrySync(attempt + 1);
+        }),
+      5e3 * 3 ** attempt,
+    ) as never;
   }
 
   /**

@@ -404,7 +404,14 @@ export async function handleEvent(
       });
 
       if (client.options.syncUnreads) {
-        await client.channelUnreads.sync();
+        // A failed sync must not hold the client back. It used to throw
+        // before setReady, and the app sat on "Connecting" for good when a
+        // proxy page came back instead of JSON. Go ready with what is held
+        // and try again in the background.
+        await client.channelUnreads.sync().catch((error) => {
+          console.error("[unreads] sync failed, retrying:", error);
+          client.channelUnreads.retrySync();
+        });
       }
 
       setReady(true);
