@@ -21,6 +21,7 @@ import type {
 } from "stoat-api";
 
 import type { Client } from "../Client.js";
+import type { Channel as ChannelClass } from "../classes/Channel.js";
 import { MessageEmbed } from "../classes/MessageEmbed.js";
 import { ServerRole } from "../classes/ServerRole.js";
 import { VoiceParticipant } from "../classes/VoiceParticipant.js";
@@ -274,6 +275,11 @@ export type UserVoiceState = {
 type ChannelVoiceState = {
   id: string;
   participants: UserVoiceState[];
+  /**
+   * When the call began. Optional because an API without it is still
+   * accepted, and a call whose start was never recorded has none.
+   */
+  started_at?: string;
 };
 
 /**
@@ -304,6 +310,40 @@ type ReadyData = {
 
   policy_changes: PolicyChange[];
 };
+
+/**
+ * Add a participant to a voice channel
+ *
+ * Arriving in an empty channel is the start of a call: the server records the
+ * same moment from the same join, so a client that saw it live and one that
+ * reads it from Ready later agree on when it began.
+ * @param channel Channel
+ * @param participant Participant
+ */
+function joinVoice(channel: ChannelClass, participant: VoiceParticipant) {
+  batch(() => {
+    if (channel.voiceParticipants.size === 0) {
+      channel._setVoiceStartedAt(participant.joinedAt);
+    }
+
+    channel.voiceParticipants.set(participant.userId, participant);
+  });
+}
+
+/**
+ * Remove a participant from a voice channel, ending the call if it empties
+ * @param channel Channel
+ * @param userId User Id
+ */
+function leaveVoice(channel: ChannelClass, userId: string) {
+  batch(() => {
+    channel.voiceParticipants.delete(userId);
+
+    if (channel.voiceParticipants.size === 0) {
+      channel._setVoiceStartedAt(undefined);
+    }
+  });
+}
 
 /**
  * Handle an event for the Client
@@ -367,6 +407,7 @@ export async function handleEvent(
           client.channels.forEach((channel) => {
             if (!occupied.has(channel.id) && channel.voiceParticipants.size) {
               channel.voiceParticipants.clear();
+              channel._setVoiceStartedAt(undefined);
             }
           });
 
@@ -374,6 +415,9 @@ export async function handleEvent(
             const channel = client.channels.get(state.id);
             if (channel) {
               channel.voiceParticipants.clear();
+              channel._setVoiceStartedAt(
+                state.started_at ? new Date(state.started_at) : undefined,
+              );
 
               for (const participant of state.participants) {
                 channel.voiceParticipants.set(
@@ -1123,10 +1167,7 @@ export async function handleEvent(
     case "VoiceChannelJoin": {
       const channel = client.channels.getOrPartial(event.id);
       if (channel) {
-        channel.voiceParticipants.set(
-          event.state.id,
-          new VoiceParticipant(client, event.state),
-        );
+        joinVoice(channel, new VoiceParticipant(client, event.state));
         // todo: event
       }
       break;
@@ -1134,7 +1175,7 @@ export async function handleEvent(
     case "VoiceChannelLeave": {
       const channel = client.channels.getOrPartial(event.id);
       if (channel) {
-        channel.voiceParticipants.delete(event.user);
+        leaveVoice(channel, event.user);
         // todo: event
       }
       break;
@@ -1143,15 +1184,15 @@ export async function handleEvent(
       // A moderator moved someone. The API sends this INSTEAD of a leave and
       // a join, so ignoring it left the person as a ghost in the old channel
       // and missing from the new one.
-      client.channels
-        .getOrPartial(event.from)
-        ?.voiceParticipants.delete(event.user);
-      client.channels
-        .getOrPartial(event.to)
-        ?.voiceParticipants.set(
-          event.state.id,
-          new VoiceParticipant(client, event.state),
-        );
+      const from = client.channels.getOrPartial(event.from);
+      if (from) {
+        leaveVoice(from, event.user);
+      }
+
+      const to = client.channels.getOrPartial(event.to);
+      if (to) {
+        joinVoice(to, new VoiceParticipant(client, event.state));
+      }
       break;
     }
     case "UserVoiceStateUpdate": {
@@ -1165,8 +1206,8 @@ export async function handleEvent(
         if (existing) {
           existing.update(event.data);
         } else {
-          channel.voiceParticipants.set(
-            event.id,
+          joinVoice(
+            channel,
             new VoiceParticipant(client, {
               id: event.id,
               joined_at: Date.now(),
