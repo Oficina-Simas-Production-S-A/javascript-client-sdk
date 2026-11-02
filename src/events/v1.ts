@@ -444,11 +444,19 @@ export async function handleEvent(
           const channel = client.channels.get(event.channel);
           if (!channel) return;
 
-          client.channels.updateUnderlyingObject(
-            channel.id,
-            "lastMessageId",
-            event._id,
-          );
+          // "Call started" is not a new message for unreads: the server never
+          // moves the channel's last_message_id for it (the voice-ingress
+          // daemon creates it, and only the API runs the task that moves it).
+          // Moving it here lit the voice channel up as unread in every open
+          // tab, even for whoever started the call, until a reload brought
+          // the server's value back.
+          if (event.system?.type !== "call_started") {
+            client.channels.updateUnderlyingObject(
+              channel.id,
+              "lastMessageId",
+              event._id,
+            );
+          }
 
           if (
             event.mentions?.includes(client.user!.id) &&
