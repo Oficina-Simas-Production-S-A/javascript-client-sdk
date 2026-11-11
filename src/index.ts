@@ -9,6 +9,9 @@ export { BotFlags } from "./hydration/bot.js";
 export { ServerFlags } from "./hydration/server.js";
 export type {
   BannerPosition,
+  ListenParty,
+  ListenPlaying,
+  ListenTrack,
   WatchParty,
   WatchPlaying,
   WatchTrack,
