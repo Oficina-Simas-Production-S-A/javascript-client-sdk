@@ -24,6 +24,7 @@ import type { ServerCollection } from "../collections/ServerCollection.js";
 import { hydrate } from "../hydration/index.js";
 import type {
   BannerPosition,
+  ListenParty,
   ServerFlags,
   WatchParty,
 } from "../hydration/server.js";
@@ -160,6 +161,13 @@ export class Server {
    */
   get watchParty(): WatchParty | undefined {
     return this.#collection.getUnderlyingObject(this.id).watchParty;
+  }
+
+  /**
+   * Spotify the members listen to together
+   */
+  get listenParty(): ListenParty | undefined {
+    return this.#collection.getUnderlyingObject(this.id).listenParty;
   }
 
   /**

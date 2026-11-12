@@ -49,6 +49,51 @@ export type WatchParty = {
 };
 
 /**
+ * A Spotify track in the listen party
+ */
+export type ListenTrack = {
+  id: string;
+  /** 22 base-62 characters; the URI is `spotify:track:<spotify_id>` */
+  spotify_id: string;
+  title: string;
+  /** One line, names separated by ", " */
+  artists: string;
+  album?: string;
+  cover?: string;
+  /** Seconds */
+  duration: number;
+  /** Id of the member who queued it */
+  added_by: string;
+};
+
+/**
+ * Track playing now in the listen party
+ */
+export type ListenPlaying = {
+  track: ListenTrack;
+  /** Position in milliseconds at the instant `at` */
+  position: number;
+  playing: boolean;
+  /** Server clock (Unix milliseconds) when `position` held */
+  at: number;
+};
+
+/**
+ * Spotify the members of a server listen to together, each on their own
+ * account through the official player (the server only keeps them in sync)
+ */
+export type ListenParty = {
+  version: number;
+  /** Absent means true */
+  everyone_controls?: boolean;
+  current?: ListenPlaying;
+  queue?: ListenTrack[];
+  history?: { track: ListenTrack; at: number }[];
+  /** Ids of who is listening, in the order they turned the sound on */
+  viewers?: string[];
+};
+
+/**
  * Point of the banner kept in view, in percent of each axis
  * (the same as CSS `background-position`)
  */
@@ -64,6 +109,7 @@ export type BannerPosition = {
  */
 type ServerInput = APIServer & {
   watch_party?: WatchParty;
+  listen_party?: ListenParty;
   banner_position?: BannerPosition;
 };
 
@@ -91,6 +137,7 @@ export type HydratedServer = {
   nsfw: boolean;
 
   watchParty?: WatchParty;
+  listenParty?: ListenParty;
 };
 
 export const serverHydration: Hydrate<ServerInput, HydratedServer> = {
@@ -101,6 +148,7 @@ export const serverHydration: Hydrate<ServerInput, HydratedServer> = {
     system_messages: "systemMessages",
     default_permissions: "defaultPermissions",
     watch_party: "watchParty",
+    listen_party: "listenParty",
     banner_position: "bannerPosition",
   },
   functions: {
@@ -127,6 +175,7 @@ export const serverHydration: Hydrate<ServerInput, HydratedServer> = {
     discoverable: (server) => server.discoverable || false,
     nsfw: (server) => server.nsfw || false,
     watchParty: (server) => server.watch_party!,
+    listenParty: (server) => server.listen_party!,
   },
   initialHydration: () => ({
     channelIds: new ReactiveSet(),
